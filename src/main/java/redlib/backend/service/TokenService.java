@@ -1,6 +1,8 @@
 package redlib.backend.service;
 
+import org.apache.ibatis.annotations.Param;
 import redlib.backend.model.Token;
+import redlib.backend.model.UserPrivilege;
 import redlib.backend.vo.OnlineUserVO;
 
 import java.util.List;
@@ -48,4 +50,5 @@ public interface TokenService {
      * @param accessToken 用户的accessToken
      */
     void kick(String accessToken);
+
 }

@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="redlib.backend.dao.RecordingsMapper">
+
+    <resultMap id="RecordingResultMap" type="redlib.backend.model.Recordings">
+        <id column="id" property="id" jdbcType="INTEGER"/>
+        <result column="reader_id" property="readerId" jdbcType="INTEGER"/>
+        <result column="username" property="username" jdbcType="VARCHAR"/>
+        <result column="book_title" property="bookTitle" jdbcType="VARCHAR"/>
+        <result column="borrowed_time" property="borrowedTime" jdbcType="TIMESTAMP"/>
+        <result column="returned_time" property="returnedTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <select id="listRecordingByUserName" resultMap="RecordingResultMap">
+        SELECT
+            r.reader_id,
+            u.username,
+            r.isbn,
+            r.borrowed_time,
+            r.returned_time
+        FROM recordings r
+        JOIN myLib_db.readers u ON r.reader_id = u.reader_id
+        WHERE u.username = #{username}
+        ORDER BY r.borrowed_time DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="listUnreturnedByUserName" resultMap="RecordingResultMap">
+        SELECT
+            r.reader_id,
+            u.username,
+            r.isbn,
+            r.borrowed_time,
+            r.returned_time
+        FROM recordings r
+                 JOIN myLib_db.readers u ON r.reader_id = u.reader_id
+        WHERE u.username = #{username}
+          AND returned_time IS NULL
+        ORDER BY r.borrowed_time DESC
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="countByUserName" resultType="int">
+        SELECT COUNT(*)
+        FROM recordings r
+        JOIN readers u ON r.reader_id = u.reader_id
+        WHERE u.username = #{username}
+    </select>
+
+    <select id="countUnreturnedByUserName" resultType="int">
+        SELECT COUNT(*)
+        FROM recordings r
+                 JOIN readers u ON r.reader_id = u.reader_id
+        WHERE u.username = #{username}
+            AND returned_time IS NULL
+    </select>
+
+    <select id="countUnreturnedByIsbn" resultType="int">
+        SELECT COUNT(*)
+        FROM recordings
+        WHERE isbn = #{isbn}
+          AND returned_time IS NULL
+    </select>
+
+    <insert id="borrowBook" parameterType="map">
+        INSERT INTO recordings(reader_id, isbn, returned_time)
+            VALUES (
+                    (SELECT DISTINCT reader_id  FROM readers WHERE username = #{username}),
+                    #{isbn},
+                    NULL
+                   )
+    </insert>
+
+    <update id="returnBook" parameterType="map">
+        UPDATE recordings
+        SET returned_time = NOW()
+        WHERE reader_id = (SELECT reader_id FROM readers WHERE username = #{username})
+            AND isbn = #{isbn}
+            AND returned_time IS NULL
+    </update>
+
+    <select id="checkUnreturned" resultType="int">
+        SELECT COUNT(*)
+        FROM recordings
+        WHERE reader_id = (SELECT reader_id FROM readers WHERE username = #{username})
+          AND isbn = #{isbn}
+          AND returned_time IS NULL
+    </select>
+
+    <select id="listAll" resultMap="RecordingResultMap">
+        SELECT
+            r.id,
+            r.reader_id,
+            u.username,
+            r.isbn,
+            r.borrowed_time,
+            r.returned_time
+        FROM recordings r
+                 INNER JOIN readers u ON r.reader_id = u.reader_id
+        <where>
+            <if test="returned == true">
+                r.returned_time IS NOT NULL
+            </if>
+            <if test="returned == false">
+                r.returned_time IS NULL
+            </if>
+        </where>
+        ORDER BY borrowed_time ${sortOrder}
+    </select>
+
+</mapper>

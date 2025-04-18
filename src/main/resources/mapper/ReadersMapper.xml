@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="redlib.backend.dao.ReadersMapper">
+  <resultMap id="ReadersResultMap" type="redlib.backend.model.Readers">
+    <id property="readerId" column="reader_id"/>
+    <result property="username" column="username"/>
+    <result property="password" column="password"/>
+    <result property="createdAt" column="created_at"/>
+    <!--  如果 Readers 类有 suspended 字段，添加映射  -->
+    <result property="suspended" column="suspended"/>
+  </resultMap>
+  <select id="login" resultMap="ReadersResultMap">
+    SELECT DISTINCT
+      r.*
+    FROM
+      readers  r
+        LEFT JOIN
+      user_privileges up
+      ON up.user_id = r.reader_id
+        AND up.user_type = 'reader'
+        AND up.suspended = 0
+    WHERE
+      r.username = #{username}
+      AND r.password = #{password}
+  </select>
+
+  <!-- 其他查询 -->
+  <select id="selectByReaderId" resultMap="ReadersResultMap">
+    SELECT * FROM readers
+    WHERE reader_id = #{readerId}
+  </select>
+
+  <select id="selectByUsername" resultMap="ReadersResultMap">
+    SELECT * FROM readers
+    WHERE username = #{username}
+  </select>
+
+  <select id="getIdByUsername" resultType="Integer">
+    SELECT reader_id FROM readers
+    WHERE username = #{username}
+  </select>
+</mapper>

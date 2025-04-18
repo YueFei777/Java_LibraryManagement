@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="redlib.backend.dao.RootMapper">
+    <resultMap id="RootResultMap" type="redlib.backend.model.Root">
+        <id property="rootId" column="root_id"/>
+        <!--  映射主键  -->
+        <result property="username" column="username"/>
+        <!--  其他字段  -->
+        <result property="password" column="password"/>
+        <result property="createdAt" column="created_at"/>
+        <!--  时间字段映射  -->
+    </resultMap>
+    <select id="login" resultMap="RootResultMap">
+        SELECT DISTINCT
+            r.*
+        FROM
+            roots r
+                LEFT JOIN
+            user_privileges up
+            ON up.user_id = r.root_id
+                AND up.suspended = 0
+        WHERE
+            r.username = #{username}
+          AND r.password = #{password}
+    </select>
+
+</mapper>

@@ -1,103 +1,93 @@
 package redlib.backend.service.impl;
 
-import eu.bitwalker.useragentutils.Browser;
-import eu.bitwalker.useragentutils.OperatingSystem;
-import eu.bitwalker.useragentutils.UserAgent;
-import eu.bitwalker.useragentutils.Version;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.util.Assert;
-import redlib.backend.dao.AdminMapper;
-import redlib.backend.dao.AdminPrivMapper;
-import redlib.backend.dao.LoginLogMapper;
-import redlib.backend.model.Admin;
-import redlib.backend.model.AdminPriv;
-import redlib.backend.model.LoginLog;
-import redlib.backend.model.Token;
+import redlib.backend.dao.*;
+import redlib.backend.model.*;
 import redlib.backend.service.TokenService;
 import redlib.backend.service.utils.TokenUtils;
 import redlib.backend.utils.FormatUtils;
 import redlib.backend.vo.OnlineUserVO;
+import lombok.extern.slf4j.Slf4j;
+import ua_parser.Parser;
+import ua_parser.Client;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class TokenServiceImpl implements TokenService {
-    @Autowired
-    private AdminMapper adminMapper;
+    @Autowired private RootMapper rootMapper;
+    @Autowired private SupervisorMapper supervisorMapper;
+    @Autowired private ReadersMapper readersMapper;
+    @Autowired private redlib.backend.dao.UserPrivilegeMapper userPrivilegeMapper;
 
-    @Autowired
-    private LoginLogMapper loginLogMapper;
-
-    @Autowired
-    private AdminPrivMapper adminPrivMapper;
-
-    private Map<String, Token> tokenMap = new ConcurrentHashMap<>(1 << 8);
+    private final Map<String, Token> tokenMap = new ConcurrentHashMap<>(1 << 8);
 
     /**
      * 用户登录，返回令牌信息
      *
-     * @param userId    用户id
+     * @param username    用户名称
      * @param password  密码
-     * @param ipAddress
-     * @param userAgent
      * @return 令牌信息
      */
     @Override
-    public Token login(String userId, String password, String ipAddress, String userAgent) {
-        Admin admin = adminMapper.login(userId, FormatUtils.password(password));
-        Assert.notNull(admin, "用户名或者密码错误");
-        Assert.isTrue(Boolean.TRUE.equals(admin.getEnabled()), "此账户已经禁用，不能登录");
-        Token token = new Token();
-        token.setAccessToken(makeToken());
-        token.setUserId(admin.getId());
-        token.setLastAction(new Date());
-        token.setDepartment(admin.getDepartment());
-        token.setSex(admin.getSex());
-        token.setIpAddress(ipAddress);
-        token.setUserCode(userId);
-        token.setUserName(admin.getName());
-        token.setPrivSet(new HashSet<>());
-        List<AdminPriv> privList = adminPrivMapper.list(admin.getId());
-        token.setPrivSet(new HashSet<>());
-        for (AdminPriv priv : privList) {
-            token.getPrivSet().add(priv.getModId() + '.' + priv.getPriv());
+    public Token login(String username, String password, String ipAddress, String userAgent) {
+        // 1. 依次尝试三种用户类型登录
+        Root root = rootMapper.login(username, FormatUtils.password(password));
+        if (root != null) {
+            return buildToken(UserType.root, root.getUsername(), ipAddress, userAgent);
         }
-        try {
-            UserAgent ua = UserAgent.parseUserAgentString(userAgent);
-            Browser browser = ua.getBrowser();
-            OperatingSystem os = ua.getOperatingSystem();
-            Version version = ua.getBrowserVersion();
-            if (browser != null) {
-                token.setBrowser(browser.getName());
-                if (version != null) {
-                    token.setBrowser(token.getBrowser() + " V" + version.getVersion());
-                }
-            }
 
-            if (os != null) {
-                token.setOs(os.getName());
-                if (os.getDeviceType() != null) {
-                    token.setDevice(os.getDeviceType().getName());
-                }
-            }
+        Supervisor supervisor = supervisorMapper.login(username, FormatUtils.password(password));
+        if (supervisor != null) {
+            return buildToken(UserType.supervisor, supervisor.getUsername(), ipAddress, userAgent);
+        }
 
-            LoginLog loginLog = new LoginLog();
-            loginLog.setName(token.getUserName());
-            loginLog.setUserCode(token.getUserCode());
-            loginLog.setIpAddress(token.getIpAddress());
-            loginLog.setBrowser(token.getBrowser());
-            loginLog.setOs(token.getOs());
-            loginLogMapper.insert(loginLog);
+        Readers readers = readersMapper.login(username, FormatUtils.password(password));
+        if (readers != null) {
+            return buildToken(UserType.reader, readers.getUsername(), ipAddress, userAgent);
+        }
 
-        } catch (Exception ex) {
-            ex.printStackTrace();
+        throw new RuntimeException("用户名或密码错误");
+    }
+
+    private Token buildToken(UserType userType, String username,
+                             String ipAddress, String userAgent) {
+        Parser uaParser = new Parser();
+        Client c = uaParser.parse(userAgent);
+
+        Token token = new Token();
+        token.setAccessToken(UUID.randomUUID().toString().replace("-", ""));
+        token.setUserType(userType);
+        token.setUserName(username);
+        token.setIpAddress(ipAddress);
+        token.setLastAction(new Date());
+        token.setBrowser(c.userAgent.family + " " + c.userAgent.major);
+        token.setOs(c.os.family + " " + c.os.major);
+        token.setDevice(c.device.family);
+
+        switch (userType) {
+            case root:
+                token.setPrivSet(new HashSet<>(Collections.singletonList("*")));
+                break;
+            case supervisor:
+                Supervisor supervisor = supervisorMapper.selectByUsername(username);
+                token.setUserId(supervisor.getSupervisorId());
+                token.setPrivSet(getUserPrivileges(userType, username));
+                break;
+            case reader:
+                Readers reader = readersMapper.selectByUsername(username);
+                token.setUserId(reader.getReaderId());
+                token.setPrivSet(getUserPrivileges(userType, username));
+                break;
         }
         tokenMap.put(token.getAccessToken(), token);
         return token;
     }
+
 
     /**
      * 根据token获取令牌信息
@@ -132,7 +122,7 @@ public class TokenServiceImpl implements TokenService {
     @Override
     public List<OnlineUserVO> list() {
         Collection<Token> tokens = tokenMap.values();
-        return tokens.stream().map(item -> TokenUtils.convertToVO(item)).collect(Collectors.toList());
+        return tokens.stream().map(TokenUtils::convertToVO).collect(Collectors.toList());
     }
 
     /**
@@ -148,4 +138,20 @@ public class TokenServiceImpl implements TokenService {
     private String makeToken() {
         return UUID.randomUUID().toString().replaceAll("-", "") + "";
     }
+
+    private Set<String> getUserPrivileges(UserType userType, String username) {
+        // 根据 userType 和 username 查询用户ID
+        Integer userId = switch (userType) {
+            case supervisor -> supervisorMapper.getIdByUsername(username);
+            case reader -> readersMapper.getIdByUsername(username);
+            default -> throw new IllegalArgumentException("无效的用户类型");
+        };
+
+        // 查询权限表
+        List<UserPrivilege> privileges = userPrivilegeMapper.listPrivileges(userType, userId);
+        return privileges.stream()
+                .map(p -> p.getModId() + "." + p.getPriv())
+                .collect(Collectors.toSet());
+    }
+
 }

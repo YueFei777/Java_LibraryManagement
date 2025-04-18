@@ -1,126 +1,213 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
-<mapper namespace="redlib.backend.dao.AdminMapper">
-    <resultMap id="BaseResultMap" type="redlib.backend.model.Admin">
-        <id column="id" property="id" jdbcType="INTEGER"/>
-        <result column="user_code" property="userCode" jdbcType="VARCHAR"/>
-        <result column="name" property="name" jdbcType="VARCHAR"/>
-        <result column="sex" property="sex" jdbcType="TINYINT"/>
-        <result column="enabled" property="enabled" jdbcType="BIT"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="redlib.backend.dao.ManageMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="SupervisorDTOMap" type="redlib.backend.dto.SupervisorDTO">
+        <id column="supervisor_id" property="supervisorId" jdbcType="INTEGER"/>
+        <result column="username" property="username" jdbcType="VARCHAR"/>
         <result column="password" property="password" jdbcType="VARCHAR"/>
-        <result column="department" property="department" jdbcType="VARCHAR"/>
-        <result column="phone" property="phone" jdbcType="VARCHAR"/>
-        <result column="email" property="email" jdbcType="VARCHAR"/>
-        <result column="created_at" jdbcType="TIMESTAMP" property="createdAt"/>
-        <result column="created_by" jdbcType="INTEGER" property="createdBy"/>
-        <result column="updated_at" jdbcType="TIMESTAMP" property="updatedAt"/>
-        <result column="updated_by" jdbcType="INTEGER" property="updatedBy"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+
+        <!-- 权限明细集合 -->
+        <collection property="privileges" ofType="redlib.backend.model.PrivilegeDetail">
+            <result column="mod_id" property="modId"/>
+            <result column="priv" property="priv"/>
+            <result column="suspended" property="suspended"
+                    typeHandler="org.apache.ibatis.type.BooleanTypeHandler"/>
+        </collection>
     </resultMap>
-    <sql id="Base_Column_List">
-        id
-        , user_code, name, sex, enabled, password, department, phone, email, created_at, created_by, updated_at, updated_by
-    </sql>
-    <select id="selectByPrimaryKey" resultMap="BaseResultMap" parameterType="java.lang.Integer">
-        select
-        <include refid="Base_Column_List"/>
-        from admin
-        where id = #{id,jdbcType=INTEGER}
-    </select>
 
-    <select id="getByUserCode" resultMap="BaseResultMap" parameterType="java.lang.String">
-        select
-        <include refid="Base_Column_List"/>
-        from admin
-        where user_code = #{userCode}
-    </select>
+    <resultMap id="SupervisorVOMap" type="redlib.backend.vo.SupervisorVO">
+        <id column="supervisor_id" property="supervisorId"/>
+        <result column="username" property="username"/>
+        <result column="created_at" property="createdAt"/>
 
-    <select id="login" resultMap="BaseResultMap" parameterType="java.lang.String">
-        select
-        <include refid="Base_Column_List"/>
-        from admin
-        where user_code = #{userCode} and password=#{password}
-    </select>
+        <collection property="privileges" ofType="redlib.backend.model.PrivilegeDetail">
+            <result column="mod_id" property="modId"/>
+            <result column="priv" property="priv"/>
+            <result column="suspended" property="suspended"
+                    typeHandler="org.apache.ibatis.type.BooleanTypeHandler"/>
+        </collection>
+    </resultMap>
 
+    <resultMap id="readerResultMap" type="redlib.backend.model.Readers">
+        <id property="readerId" column="reader_id"/>
+        <result property="username" column="username"/>
+        <result property="studentId" column="student_id"/>
+        <result property="contact" column="contact"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="password" column="password"/>
+    </resultMap>
 
-    <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
-        delete
-        from admin
-        where id = #{id,jdbcType=INTEGER}
+    <resultMap id="ReaderDTOMap" type="redlib.backend.dto.ReaderDTO">
+        <id column="reader_id" property="readerId" jdbcType="INTEGER"/>
+        <result column="username" property="username" jdbcType="VARCHAR"/>
+        <result column="password" property="password" jdbcType="VARCHAR"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="student_id" property="studentId" jdbcType="VARCHAR"/>
+
+        <!-- 权限明细集合 -->
+        <collection property="recordings" ofType="redlib.backend.vo.RecordingsVO">
+            <result column="isbn" property="isbn"/>
+            <result column="borrowed_time" property="borrowedTime"/>
+            <result column="returned_time" property="returnedTime"/>
+        </collection>
+    </resultMap>
+
+    <resultMap id="ReaderVOMap" type="redlib.backend.vo.ReaderVO">
+        <id column="reader_id" property="readerId" jdbcType="INTEGER"/>
+        <result column="username" property="username" jdbcType="VARCHAR"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="student_id" property="studentId" jdbcType="VARCHAR"/>
+
+        <!-- 权限明细集合 -->
+        <collection property="recordings" ofType="redlib.backend.vo.RecordingsVO">
+            <result column="isbn" property="isbn"/>
+            <result column="borrowed_time" property="borrowedTime"/>
+            <result column="returned_time" property="returnedTime"/>
+        </collection>
+    </resultMap>
+
+    <delete id="deleteSupervisorPriv">
+        DELETE
+            FROM user_privileges
+        WHERE user_type = 'supervisor' AND user_id IN(
+            SELECT supervisor_id
+            FROM supervisors
+            WHERE username = #{username}
+            )
     </delete>
-    <insert id="insert" parameterType="redlib.backend.model.Admin" keyProperty="id" useGeneratedKeys="true">
-        insert into admin (user_code, name, sex,
-                           enabled, password, department,
-                           phone, email, created_by, updated_by)
-        values (#{userCode,jdbcType=VARCHAR}, #{name,jdbcType=VARCHAR}, #{sex,jdbcType=TINYINT},
-                #{enabled,jdbcType=BIT}, #{password,jdbcType=VARCHAR}, #{department,jdbcType=VARCHAR},
-                #{phone,jdbcType=VARCHAR}, #{email,jdbcType=VARCHAR}, #{createdBy,jdbcType=INTEGER},
-                #{updatedBy,jdbcType=INTEGER})
+
+    <delete id="deleteSupervisor">
+        DELETE FROM supervisors
+        WHERE username = #{username}
+    </delete>
+
+    <select id="listSupervisors" resultMap="SupervisorVOMap">
+        SELECT
+            s.supervisor_id,
+            s.username,
+            s.created_at,
+            up.mod_id,
+            up.priv,
+            up.suspended
+        FROM supervisors s
+                 LEFT JOIN user_privileges up
+                           ON up.user_id = s.supervisor_id
+                               AND up.user_type = 'supervisor'
+                                AND up.suspended IS NOT NULL
+        ORDER BY s.supervisor_id
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="selectByUsername" resultMap="SupervisorDTOMap">
+        SELECT
+            s.supervisor_id,
+            s.username,
+            s.password,
+            s.created_at,
+            up.mod_id,
+            up.priv,
+            up.suspended
+        FROM supervisors s
+                 LEFT JOIN user_privileges up
+                           ON up.user_id = s.supervisor_id
+                               AND up.user_type = 'supervisor'
+        WHERE s.username = #{username}
+    </select>
+
+    <insert id="insertSupervisor">
+        INSERT INTO supervisors (username, password, created_at)
+            VALUES (#{username}, #{encrypted_password}, NOW())
     </insert>
 
-    <update id="updateByPrimaryKey" parameterType="redlib.backend.model.Admin">
-        update admin
-        set name = #{name,jdbcType=VARCHAR},
-        sex = #{sex,jdbcType=TINYINT},
-        enabled = #{enabled,jdbcType=BIT},
-        <if test="password != null">
-            password = #{password,jdbcType=CHAR},
-        </if>
-        department = #{department,jdbcType=VARCHAR},
-        phone = #{phone,jdbcType=VARCHAR},
-        email = #{email,jdbcType=VARCHAR},
-        updated_by = #{updatedBy,jdbcType=INTEGER}
-        where id = #{id,jdbcType=VARCHAR}
+    <update id="updateSupervisorNameAndPassword">
+        UPDATE supervisors
+        SET
+            username = #{newUsername},
+            password = #{newPassword}
+        WHERE
+            username = #{oldUsername}
+            AND password = #{oldPassword}
     </update>
 
-    <!-- 根据id列表获取角色列表 -->
-    <select id="listByIds" resultMap="BaseResultMap">
-        select
-        <include refid="Base_Column_List"/>
-        from admin
-        where id in
-        <foreach item="item" index="index" collection="ids" open="(" separator="," close=")">
-            #{item}
-        </foreach>
+    <select id="countSupervisors" resultType="int">
+        SELECT COUNT(*) FROM supervisors
     </select>
 
-    <!--查询（分页）-->
-    <select id="list" resultMap="BaseResultMap">
-        select
-        <include refid="Base_Column_List"/>
-        from admin
-        <where>
-            <if test="queryDTO.keyword != null">
-                ( name like #{queryDTO.keyword} or user_code like #{queryDTO.keyword} or department like
-                #{queryDTO.keyword} )
-            </if>
-        </where>
-        <if test="queryDTO.orderBy != null">
-            order by ${queryDTO.orderBy}
-        </if>
-        <if test="queryDTO.orderBy == null">
-            order by id desc
-        </if>
-        limit #{offset}, #{limit}
-    </select>
+    <!-- ********************************************************************************************************* -->
 
-    <!--查询订单列表（分页）命中个数-->
-    <select id="count" resultType="integer">
-        select count(*) from admin
-        <where>
-            <if test="queryDTO.keyword != null">
-                ( name like #{queryDTO.keyword} or user_code like #{queryDTO.keyword} or department like
-                #{queryDTO.keyword} )
-            </if>
-        </where>
-    </select>
+    <insert id="insertReader">
+        INSERT INTO readers (username, student_id, contact, password)
+        VALUES (#{username}, #{studentId}, #{contact}, #{password})
+    </insert>
 
-    <!-- 根据id列表删除 -->
-    <delete id="delete">
-        delete
-        from admin
-        where user_code !='root' and id in
-        <foreach item="item" index="index" collection="ids" open="(" separator="," close=")">
-            #{item}
-        </foreach>
+    <delete id="deleteReaderPriv">
+        DELETE
+        FROM user_privileges
+        WHERE user_type = 'reader' AND user_id IN(
+            SELECT reader_id
+            FROM readers
+            WHERE username = #{username}
+        )
     </delete>
+
+    <delete id="deleteReader">
+        DELETE FROM readers
+        WHERE username = #{username}
+    </delete>
+
+    <update id="updateReaderNameAndPassword">
+        UPDATE readers
+        SET
+            username = #{newUsername},
+            password = #{newPassword}
+        WHERE
+            username = #{oldUsername}
+          AND password = #{oldPassword}
+    </update>
+
+    <select id="countReaders" resultType="int">
+        SELECT COUNT(*) FROM readers
+    </select>
+
+    <select id="selectByReaderName" resultMap="ReaderDTOMap">
+        SELECT
+            r.reader_id,
+            r.username,
+            r.password,
+            r.student_id,
+            r.created_at,
+            rc.isbn,
+            rc.borrowed_time,
+            rc.returned_time
+        FROM readers r
+                 LEFT JOIN recordings rc
+                           ON rc.reader_id = r.reader_id
+        WHERE r.username = #{username} AND r.student_id = #{studentId}
+    </select>
+
+    <select id="listReaders" resultMap="ReaderVOMap">
+        SELECT
+            r.reader_id,
+            r.username,
+            r.created_at,
+            r.student_id,
+            rc.isbn,
+            rc.borrowed_time,
+            rc.returned_time
+        FROM readers r
+                 LEFT JOIN recordings rc
+                           ON rc.reader_id = r.reader_id
+        LIMIT #{pageSize} OFFSET #{offset}
+    </select>
+
+    <select id="selectReaderIdByStudentId">
+        SELECT reader_id
+        FROM readers
+            WHERE student_id = #{studentId}
+    </select>
+
 </mapper>

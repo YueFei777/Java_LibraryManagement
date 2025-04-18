@@ -40,7 +40,7 @@ public class Page<T> {
         this.setList(dtoList);
     }
 
-    public static Page getNullPage(Integer page, Integer pageSize) {
-        return new Page(page, pageSize, 0, Collections.emptyList());
+    public static <T> Page<T> getNullPage(Integer page, Integer pageSize) {
+        return new Page<>(page, pageSize, 0, Collections.emptyList());
     }
 }

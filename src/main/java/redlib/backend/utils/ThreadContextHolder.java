@@ -27,4 +27,8 @@ public class ThreadContextHolder {
     public static Token getTokenWithoutAssert() {
         return tokenHolder.get();
     }
+
+    public static void clear() {
+        tokenHolder.remove();
+    }
 }

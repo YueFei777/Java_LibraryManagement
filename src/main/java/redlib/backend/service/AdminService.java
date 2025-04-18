@@ -1,34 +1,52 @@
 package redlib.backend.service;
 
-import redlib.backend.dto.AdminDTO;
-import redlib.backend.dto.query.KeywordQueryDTO;
+import org.springframework.transaction.annotation.Transactional;
+import redlib.backend.dto.ReaderCreationDTO;
+import redlib.backend.dto.ReaderDTO;
 import redlib.backend.model.Page;
-import redlib.backend.vo.AdminVO;
-import redlib.backend.vo.ModuleVO;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import redlib.backend.model.UserType;
+import redlib.backend.vo.ReaderVO;
+import redlib.backend.vo.SupervisorVO;
 
 public interface AdminService {
-    /**
-     * 获取所有的模块列表
-     *
-     * @return 所有的模块列表
-     */
-    List<ModuleVO> listModules();
+    public void suspendPrivileges(UserType userType, Integer userId, String modId, String priv);
+    public void empowerPrivileges(UserType userType, Integer userId, String modId, String priv);
 
-    Map<Integer, String> getNameMap(Set<Integer> adminIds);
+    void deletePrivileges(UserType userType, Integer userId, String modId, String priv);
 
-    Page<AdminVO> list(KeywordQueryDTO queryDTO);
+    Page<SupervisorVO> listSupervisors(int pageNum, int pageSize);
 
-    AdminDTO getDetail(Integer id);
+    @Transactional
+    void addSupervisor(String username, String rawPassword);
 
-    Integer update(AdminDTO adminDTO);
+    @Transactional
+    void deleteSupervisor(String username);
 
-    Integer add(AdminDTO adminDTO);
+    @Transactional
+    void updateCredentials(
+            String oldUsername,
+            String oldRawPassword,
+            String newUsername,
+            String newRawPassword
+    );
 
-    Integer delete(List<Integer> ids);
 
-    void updatePassword(String oldPassword, String password);
+    @Transactional
+    void addReader(ReaderCreationDTO readerCreationDTO);
+
+    Page<ReaderVO> listReaders(int pageNum, int pageSize);
+
+    @Transactional
+    void deleteReader(String username);
+
+    @Transactional
+    void updateReaderCredentials(
+            String oldUserName,
+            String student_id,
+            String oldRawPassword,
+            String newUserName,
+            String newRawPassword
+    );
+
+    ReaderVO getReaderDetails(String username, String studentID);
 }

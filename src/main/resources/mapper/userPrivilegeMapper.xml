@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="redlib.backend.dao.UserPrivilegeMapper">
+    <select id="listPrivileges" resultType="UserPrivilege">
+        SELECT mod_id , priv
+        FROM user_privileges
+        WHERE user_type = #{userType}
+        AND user_id = #{userId}
+    </select>
+    <update id="suspendUser">
+        UPDATE user_privileges
+        SET suspended = 1
+        WHERE user_type = #{userType}
+            AND user_id = #{userId}
+        <if test="modId != null and priv != null">
+            AND mod_id = #{modId}
+            AND priv = #{priv}
+        </if>
+    </update>
+    <select id="hasSuspend" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM user_privileges
+            WHERE
+                user_type = #{userType}
+              AND user_id = #{userId}
+              AND mod_id = #{modId}
+              AND priv = #{priv}
+              AND suspended = 1
+        )
+    </select>
+    <insert id="buildPrivilege">
+        INSERT INTO user_privileges
+            (user_type, user_id, mod_id, priv, suspended)
+        VALUES (
+                #{userType},
+                #{userId},
+                #{modId},
+                #{priv},
+                0
+               )
+        ON DUPLICATE KEY UPDATE
+            suspended = IF(suspended = 1, 0, suspended)
+    </insert>
+    <delete id="deletePrivilege">
+        DELETE FROM user_privileges
+        WHERE user_type = #{userType}
+          AND user_id = #{userId}
+          AND mod_id = #{modId}
+          AND priv = #{priv}
+    </delete>
+</mapper>

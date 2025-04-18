@@ -18,4 +18,5 @@ import java.lang.annotation.Target;
 @Target(ElementType.METHOD)
 public @interface Privilege {
     String[] value() default {};
+    boolean allowRoot() default true;  // 是否允许Root用户直接访问
 }

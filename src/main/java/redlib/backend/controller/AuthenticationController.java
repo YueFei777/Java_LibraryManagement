@@ -43,7 +43,11 @@ public class AuthenticationController {
 
     @GetMapping("logout")
     @Privilege
-    public void logout() {
+    public void logout(HttpServletResponse response) {
+        Cookie cookie = new Cookie("accessToken", null);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
     }
 
     @GetMapping("ping")

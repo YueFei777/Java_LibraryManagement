@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="redlib.backend.dao.SupervisorMapper">
+    <resultMap id="SupervisorResultMap" type="redlib.backend.model.Supervisor">
+        <id property="supervisorId" column="supervisor_id"/>
+        <result property="username" column="username"/>
+        <result property="password" column="password"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+    <!-- 登录查询 -->
+    <select id="login" resultMap="SupervisorResultMap">
+        SELECT DISTINCT
+            s.*
+        FROM
+            supervisors s
+                LEFT JOIN
+            user_privileges up
+            ON up.user_id = s.supervisor_id
+                AND up.user_type = 'supervisor'
+                AND up.suspended = 0
+        WHERE
+            s.username = #{username}
+          AND s.password = #{password}
+    </select>
+
+    <!-- 其他查询 -->
+    <select id="selectById" resultMap="SupervisorResultMap">
+        SELECT * FROM supervisors
+        WHERE supervisor_id = #{id}
+    </select>
+
+    <select id="selectByUsername" resultMap="SupervisorResultMap">
+        SELECT *
+        FROM supervisors
+        WHERE username = #{username}
+    </select>
+
+    <select id="getIdByUsername" resultType="Integer">
+        SELECT supervisor_id FROM supervisors
+        WHERE username = #{username}
+    </select>
+</mapper>
