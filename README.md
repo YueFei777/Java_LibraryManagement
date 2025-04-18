@@ -1,4 +1,4 @@
-# web-backend
+# web-backend program
 
 ## 介绍
 
@@ -6,7 +6,7 @@
 
 ## Introduction
 
-This is the backend of the library management system for the Open Innovation Practice Project of Chongxin School at Shandong University.
+This is the backend of a library management system in JAVA for the Open Innovation Practice Project of Chongxin College, Shandong University.
 
 ## 项目作者
 
